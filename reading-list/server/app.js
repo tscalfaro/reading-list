@@ -30,6 +30,7 @@ app.get("/api/books", async (req, res) => {
     }
 });
 
+//Route to add new book
 app.post("/api/books", async (req, res) => {
     const { title, author, genre, status } = req.body;
     console.log("New book request:", { title, author, genre, status }); //Log incoming book data
@@ -46,6 +47,7 @@ app.post("/api/books", async (req, res) => {
     }
 });
 
+//Route to delete books
 app.delete("/api/books/:id", async (req, res) => {
     const { id } = req.params;
 
@@ -62,6 +64,28 @@ app.delete("/api/books/:id", async (req, res) => {
         res.status(500).send("Server error");
     }
 });
+
+//Route to update books
+app.patch("/api/books/:id", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+        const updatedBook = await pool.query(
+            "UPDATE books SET status = $1 WHERE id = $2 RETURNING *",
+            [status, id]
+        );
+
+        if (updatedBook.rowCount === 0) {
+            return res.status(400).json({ error: "Book not found" });
+        }
+
+        res.json(updatedBook.rows[0]);
+    } catch (err) {
+        console.error("Error in PATCH /api/books/:id:", err.message);
+        res.status(500).send("Server error");
+    }
+})
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
