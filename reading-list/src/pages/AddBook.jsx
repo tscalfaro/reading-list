@@ -23,9 +23,20 @@ const AddBook = () => {
         }
     };
 
-    const handleAddBook = (book) => {
-        console.log("Selected Book:", book); // Placeholder until database is ready to save selected book
-    }
+    const handleAddBook = async (book) => {
+        try {
+            const response = await axios.post("http://localhost:5000/api/books", {
+                title: book.volumeInfo.title,
+                author: book.volumeInfo.authors?.join(", "),
+                genre: book.volumeInfo.categories?.[0] || "Unknown",
+                status: "reading",
+            });
+            alert(`Book added: ${response.data.title}`);
+        } catch (error) {
+            console.error("Error adding book: ", error);
+            alert("Failed to add book.")
+        }
+    };
 
     return (
         <div>
@@ -43,6 +54,7 @@ const AddBook = () => {
                 {results.map((book) => (
                     <li key={book.id}>
                         {book.volumeInfo.title} by {book.volumeInfo.authors?.join(", ")}
+                        <button onClick={() => handleAddBook(book)}>Add</button>
                     </li>
                 ))}
             </ul>
