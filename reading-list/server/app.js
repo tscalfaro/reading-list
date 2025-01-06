@@ -46,5 +46,22 @@ app.post("/api/books", async (req, res) => {
     }
 });
 
+app.delete("/api/books/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const deleteBook = await pool.query("DELETE FROM books WHERE id = $1 RETURNING *", [id]);
+
+        if (deleteBook.rowCount === 0) {
+            return res.status(400).json({error: "Book not found" });
+        }
+
+        res.json({ message: "Book deleted successfully", book: deleteBook.rows[0] });
+    } catch (err) {
+        console.error("Error in DELETE /api/books/:id", err.message);
+        res.status(500).send("Server error");
+    }
+});
+
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
