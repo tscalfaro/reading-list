@@ -17,37 +17,69 @@ const Dashboard = () => {
         fetchBooks();
     }, []);
 
-    const removeBook = async (id) => {
+    const updateBookStatus = async (id, newStatus) => {
         try {
-            await axios.delete(`http://localhost:5000/api/books/${id}`);
-            setBooks((prevBooks) => prevBooks.filter((book) => book.id !== id));
+            const response = await axios.patch(`http://localhost:5000/api/books/${id}`, { status: newStatus });
+            setBooks((prevBooks) =>
+                prevBooks.map((book) =>
+                    book.id === id ? { ...book, status: response.data.status } : book
+                )
+            );
         } catch (error) {
-            console.error("Error deleting book: ", error);
+            console.error("Error updating book status:", error);
         }
     };
 
+    const removeBook = async (id) => {
+        if (window.confirm("Are you sure you want to delete this book?")){
+            try {
+                await axios.delete(`http://localhost:5000/api/books/${id}`);
+                setBooks((prevBooks) => prevBooks.filter((book) => book.id !== id));
+            } catch (error) {
+                console.error("Error deleting book: ", error);
+            }
+        } 
+    };
+
     const groupedBooks = books.reduce((acc, book) => {
-        acc[book.status] = acc[book.status] || [];
+        if (!acc[book.status]){
+            acc[book.status].push(book);
+        }
         acc[book.status].push(book);
         return acc;
-    }, {});
+    }, { backlog: [], reading: [], completed: [] });
 
     return (
         <div>
-            <h1>My Reading List</h1>
-            {Object.keys(groupedBooks).map((status) => (
-                <div key={status}> 
-                    <h2>{status.charAt(0).toUpperCase() + status.slice(1)}</h2>
-                    <ul>
+            <h1>My Library</h1>
+            <div className="columns">
+                {["backlog", "reading", "completed"].map((status) => (
+                    <div key={status} className="column">
+                        <h2>
+                            {status === "backlog" ? "To Be Read" : status.charAt(0).toUpperCase() + status.slice(1)}
+                        </h2>
                         {groupedBooks[status].map((book) => (
-                         <li key={book.id}>
-                             {book.title} by {book.author}
-                            <button onClick={() => removeBook(book.id)}>Remove</button>
-                         </li>
+                            <div key={book.id} className="book-card">
+                                {book.thumbnail && (
+                                    <img src={book.thumbnail} alt={`${book.title} cover`} className="book-cover" />
+                                )}
+                                <p>
+                                    {book.title} by {book.author}
+                                </p>
+                                <select
+                                    value={book.status}
+                                    onChange={(e) => updateBookStatus(book.id, e.target.value)}
+                                >
+                                    <option value="backlog">To Be Read</option>
+                                    <option value="reading">Reading</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                                <button onClick={() => removeBook(book.id)}>Remove</button>
+                            </div>
                         ))}
-                    </ul>
-                </div>
-            ))}
+                    </div>
+                ))}
+            </div>
         </div>
     );
 };

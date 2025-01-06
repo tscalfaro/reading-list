@@ -30,6 +30,7 @@ const AddBook = () => {
                 author: book.volumeInfo.authors?.join(", "),
                 genre: book.volumeInfo.categories?.[0] || "Unknown",
                 status: "reading",
+                thumbnail: book.volumeInfo.imageLinks?.thumbnail || "",
             });
             alert(`Book added: ${response.data.title}`);
         } catch (error) {

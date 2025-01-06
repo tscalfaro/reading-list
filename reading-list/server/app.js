@@ -32,12 +32,12 @@ app.get("/api/books", async (req, res) => {
 
 //Route to add new book
 app.post("/api/books", async (req, res) => {
-    const { title, author, genre, status } = req.body;
-    console.log("New book request:", { title, author, genre, status }); //Log incoming book data
+    const { title, author, genre, status, thumbnail } = req.body;
+    console.log("New book request:", { title, author, genre, status, thumbnail }); //Log incoming book data
     try{
         const newBook = await pool.query(
-            "INSERT INTO books (title, author, genre, status) VALUES ($1, $2, $3, $4) RETURNING *",
-            [title, author, genre, status]
+            "INSERT INTO books (title, author, genre, status, thumbnail) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+            [title, author, genre, status, thumbnail]
         );
         console.log("Book added to DB:", newBook.rows[0]); //Log incoming book data
         res.json(newBook.rows[0]);
