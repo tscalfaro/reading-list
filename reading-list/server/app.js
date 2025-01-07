@@ -29,29 +29,42 @@ const authenticateToken = (req, res, next) => {
     }
   };
   
-app.use("/api/books", authenticateToken);
+//app.use("/api/dashboard", authenticateToken);
 
-app.use(cors({
-    origin: (origin, callback) => {
+app.use((req, res, next) => {
+    console.log(`Request Headers:`, req.headers);
+    next();
+});
+
+/*
+origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)){
             callback(null, true);
         } else {
+            console.error(`Blocked by CORS: ${origin}`);
             callback(new Error("Not allowed by CORS"));
         }
     },
-}));
+*/
+app.use(cors({
+    origin: "http://localhost:5173", // Add your frontend origin
+    credentials: true,              // Allow cookies and Authorization headers
+    allowedHeaders: ["Authorization", "Content-Type"], // Explicitly allow headers
+})); 
 app.use(express.json()); //Parse JSON request bodies
 
-//Route to get all books
-app.get("/api/books", async (req, res) => {
-    try{
-        const books = await pool.query("SELECT * FROM books WHERE user_id = $1", [req.user.id]);
-        res.json(books.rows);
+app.get("/api/dashboard", authenticateToken, async (req, res) => {
+    try {
+      console.log("Authenticated user:", req.user); // Log the decoded JWT user data  
+      // Fetch all books for the authenticated user
+      const books = await pool.query("SELECT * FROM books WHERE user_id = $1", [req.user.id]);
+  
+      res.json(books.rows);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Server error");
+      console.error("Error in GET /api/dashboard:", err.message);
+      res.status(500).send("Server error");
     }
-});
+  });
 
 //Register Route
 app.post("/api/register", async (req, res) => {
@@ -66,7 +79,7 @@ app.post("/api/register", async (req, res) => {
 
         res.status(201).json({ user: newUser.rows[0] });
     } catch (error) {
-        console.error(err.message);
+        console.error(error.message);
         res.status(500).send("Server error");
     }
 });
@@ -83,6 +96,7 @@ app.post("/api/login", async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
+        console.log("Database password: ", user.rows[0].password);
         const validPassword = await bcrypt.compare(password, user.rows[0].password);
         if (!validPassword){
             return res.status(401).json({ error: "Invalid Credentials" });
@@ -103,7 +117,7 @@ app.post("/api/login", async (req, res) => {
 });
 
 //Route to add new book
-app.post("/api/books", async (req, res) => {
+app.post("/api/dashboard", authenticateToken, async (req, res) => {
     const { title, author, genre, status, thumbnail } = req.body;
     console.log("New book request:", { title, author, genre, status, thumbnail }); //Log incoming book data
     try{
@@ -112,15 +126,15 @@ app.post("/api/books", async (req, res) => {
             [title, author, genre, status, thumbnail, req.user.id]
         );
         console.log("Book added to DB:", newBook.rows[0]); //Log incoming book data
-        res.json(newBook.rows[0]);
+        res.status(201).json(newBook.rows[0]);
     } catch (err) {
-        console.error("Error in POST /api/books:", err.message);
+        console.error("Error in POST /api/dashboard:", err.message);
         res.status(500).send("Server error");
     }
 });
 
 //Route to delete books
-app.delete("/api/books/:id", async (req, res) => {
+app.delete("/api/dashboard/:id", authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     try {
@@ -132,13 +146,13 @@ app.delete("/api/books/:id", async (req, res) => {
 
         res.json({ message: "Book deleted successfully", book: deleteBook.rows[0] });
     } catch (err) {
-        console.error("Error in DELETE /api/books/:id", err.message);
+        console.error("Error in DELETE /api/dashboard/:id", err.message);
         res.status(500).send("Server error");
     }
 });
 
 //Route to update books
-app.patch("/api/books/:id", async (req, res) => {
+app.patch("/api/dashboard/:id", authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
@@ -154,7 +168,7 @@ app.patch("/api/books/:id", async (req, res) => {
 
         res.json(updatedBook.rows[0]);
     } catch (err) {
-        console.error("Error in PATCH /api/books/:id:", err.message);
+        console.error("Error in PATCH /api/dashboard/:id:", err.message);
         res.status(500).send("Server error");
     }
 })

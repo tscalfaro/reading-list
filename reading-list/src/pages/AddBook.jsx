@@ -25,13 +25,27 @@ const AddBook = () => {
 
     const handleAddBook = async (book) => {
         try {
-            const response = await axios.post("http://localhost:5000/api/books", {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                console.error("Token not found in localStorage");
+                return;
+            }
+            const payload = {
                 title: book.volumeInfo.title,
                 author: book.volumeInfo.authors?.join(", "),
                 genre: book.volumeInfo.categories?.[0] || "Unknown",
                 status: "reading",
                 thumbnail: book.volumeInfo.imageLinks?.thumbnail || "",
-            });
+            };
+    
+            console.log("Token:", token); // Debug token
+            console.log("Payload to be sent:", payload); // Debug payload
+
+            const response = await axios.post("http://localhost:5000/api/dashboard", payload, {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+            );
+            console.log("Response from server:", response.data); // Debug response
             alert(`Book added: ${response.data.title}`);
         } catch (error) {
             console.error("Error adding book: ", error);
@@ -39,6 +53,15 @@ const AddBook = () => {
         }
     };
 
+    /*
+    {
+                title: book.volumeInfo.title,
+                author: book.volumeInfo.authors?.join(", "),
+                genre: book.volumeInfo.categories?.[0] || "Unknown",
+                status: "reading",
+                thumbnail: book.volumeInfo.imageLinks?.thumbnail || "",
+            }
+    */
     return (
         <div>
             <h1>Add a Book</h1>
