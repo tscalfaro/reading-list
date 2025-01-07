@@ -1,12 +1,33 @@
 const express = require("express");
 const pool = require("./db");
 const cors = require ("cors");
+const bcrypt = require ("bcrypt");
+const jwt = require ("jsonwebtoken");
+
+const JWT_SECRET = "this_is_my_secret1!"; 
 
 const app = express();
 
 //Middleware
 //app.use(cors()); //Allow all requests while debugging
 const allowedOrigins = ["http://localhost:5173"];
+
+const authenticateToken = (req, res, next) => {
+    const token = req.header("Authorization")?.split(" ")[1]; // Expect "Bearer <token>"
+  
+    if (!token) {
+      return res.status(401).json({ error: "Access denied" });
+    }
+  
+    try {
+      const verified = jwt.verify(token, JWT_SECRET);
+      req.user = verified; // Attach user info to the request
+      next();
+    } catch (err) {
+      res.status(403).json({ error: "Invalid token" });
+    }
+  };
+  
 
 app.use(cors({
     origin: (origin, callback) => {
@@ -26,6 +47,55 @@ app.get("/api/books", async (req, res) => {
         res.json(books.rows);
     } catch (err) {
         console.error(err.message);
+        res.status(500).send("Server error");
+    }
+});
+
+//Register Route
+app.post("/api/register", async (req, res) => {
+    const { username, email, password } = req.body;
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = await pool.query(
+            "INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *",
+            [username, email, hashedPassword]
+        );
+
+        res.status(201).json({ user: newUser.rows[0] });
+    } catch (error) {
+        console.error(err.message);
+        res.status(500).send("Server error");
+    }
+});
+
+//Login Route
+app.post("/api/login", async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        //check user exist
+        const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        console.log("Query result:", user.rows);
+        if (!user || user.rows.length === 0){
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        const validPassword = await bcrypt.compare(password, user.rows[0].password);
+        if (!validPassword){
+            return res.status(401).json({ error: "Invalid Credentials" });
+        }
+
+        //Generate a jwt for session
+        const token = jwt.sign(
+            { id: user.rows[0].id, username: user.rows[0].username },
+            JWT_SECRET,
+            { expiresIn: "4h" } //Default token expiration 4 hours
+        );
+
+        res.json({ token, user: { id: user.rows[0].id, username: user.rows[0].username }})
+    } catch (err) {
+        console.error("Error in POST /api/login:", err.message);
         res.status(500).send("Server error");
     }
 });
