@@ -9,6 +9,7 @@ const JWT_SECRET = "this_is_my_secret1!";
 const app = express();
 
 //Middleware
+
 //app.use(cors()); //Allow all requests while debugging
 const allowedOrigins = ["http://localhost:5173"];
 
@@ -28,6 +29,7 @@ const authenticateToken = (req, res, next) => {
     }
   };
   
+app.use("/api/books", authenticateToken);
 
 app.use(cors({
     origin: (origin, callback) => {
@@ -43,7 +45,7 @@ app.use(express.json()); //Parse JSON request bodies
 //Route to get all books
 app.get("/api/books", async (req, res) => {
     try{
-        const books = await pool.query("SELECT * FROM books");
+        const books = await pool.query("SELECT * FROM books WHERE user_id = $1", [req.user.id]);
         res.json(books.rows);
     } catch (err) {
         console.error(err.message);
@@ -106,8 +108,8 @@ app.post("/api/books", async (req, res) => {
     console.log("New book request:", { title, author, genre, status, thumbnail }); //Log incoming book data
     try{
         const newBook = await pool.query(
-            "INSERT INTO books (title, author, genre, status, thumbnail) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-            [title, author, genre, status, thumbnail]
+            "INSERT INTO books (title, author, genre, status, thumbnail, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+            [title, author, genre, status, thumbnail, req.user.id]
         );
         console.log("Book added to DB:", newBook.rows[0]); //Log incoming book data
         res.json(newBook.rows[0]);
@@ -122,7 +124,7 @@ app.delete("/api/books/:id", async (req, res) => {
     const { id } = req.params;
 
     try {
-        const deleteBook = await pool.query("DELETE FROM books WHERE id = $1 RETURNING *", [id]);
+        const deleteBook = await pool.query("DELETE FROM books WHERE id = $1 AND user_id = $2 RETURNING *", [id, req.user.id]);
 
         if (deleteBook.rowCount === 0) {
             return res.status(400).json({error: "Book not found" });
@@ -142,8 +144,8 @@ app.patch("/api/books/:id", async (req, res) => {
 
     try {
         const updatedBook = await pool.query(
-            "UPDATE books SET status = $1 WHERE id = $2 RETURNING *",
-            [status, id]
+            "UPDATE books SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3 RETURNING *",
+            [status, id, req.user.id]
         );
 
         if (updatedBook.rowCount === 0) {
