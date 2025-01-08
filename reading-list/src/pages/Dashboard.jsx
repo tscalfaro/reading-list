@@ -228,6 +228,39 @@ const Dashboard = () => {
         );
     };
 
+    const StarDisplay = ({ rating }) => {
+        return (
+            <div className="star-display">
+                {Array.from({ length: 5 }, (_, index) => {
+                    const fullFill = Math.min(1, Math.max(0, rating - index));
+
+                    return (
+                        <div
+                            key={index}
+                            className="star-container"
+                            style={{
+                                position: "relative",
+                                width: "20px",
+                                height: "20px",
+                                display: "inline-block",
+                            }}
+                        >
+                            <FaStar size={20} color="#DDD" style={{ position: "absolute"}} />
+                            <FaStar
+                                size={20}
+                                color="#FFD700"
+                                style={{
+                                    position: "absolute",
+                                    clipPath: `polygon(0 0, ${fullFill * 100}% 0, ${fullFill * 100}% 100%, 0% 100%)`,
+                                }}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     StarRating.propTypes = {
         rating: PropTypes.number.isRequired,
         setRating: PropTypes.func.isRequired,
@@ -237,7 +270,7 @@ const Dashboard = () => {
         <div className="dashboard">
             <div className="columns-container">
                 <div className="column">
-                    <h2>To Be Read</h2>
+                    <h2>To Be Read ({books.backlog?.length || 0})</h2>
                     {books.backlog?.map((book) => (
                     <div key={book.id} className="book-card">
                         {book.thumbnail && <img src={book.thumbnail} alt={`${book.title} cover`}/> } 
@@ -254,7 +287,7 @@ const Dashboard = () => {
                     ))}
                 </div>
                 <div className="column">
-                    <h2>Reading</h2>
+                    <h2>Reading ({books.reading?.length || 0})</h2>
                     {books.reading?.map((book) => (
                     <div key={book.id} className="book-card">
                         {book.thumbnail && <img src={book.thumbnail} alt={`${book.title} cover`}/> } 
@@ -275,12 +308,13 @@ const Dashboard = () => {
                     ))}
                 </div>
                 <div className="column">
-                    <h2>Completed</h2>
+                    <h2>Completed ({books.completed?.length || 0})</h2>
                     {books.completed?.map((book) => (
                     <div key={book.id} className="book-card">
                         {book.thumbnail && <img src={book.thumbnail} alt={`${book.title} cover`}/> } 
                         <p>{book.title}</p>
-                        <p>Rating: {book.rating || "Add a rating"}</p>
+                        <p>{book.author}</p>
+                        <StarDisplay rating={book.rating || 0} />
                         <p>Notes: {book.notes || "Add notes"}</p>
                         <button className="book-button" onClick={() => toggleReviewModal(book.id)}>Add/Edit Review</button>
 
