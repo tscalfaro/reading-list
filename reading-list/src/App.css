@@ -80,12 +80,13 @@ input[type="number"] {
 .star-rating {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 5px;
+  gap: 15px;
 }
 
 .star-container {
   position: relative;
+  width: 30px;
+  height: 30px;
 }
 
 .star-container:hover {

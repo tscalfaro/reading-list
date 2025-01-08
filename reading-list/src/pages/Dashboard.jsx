@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaStar } from "react-icons/fa";
 import axios from "axios";
+import PropTypes from "prop-types";
 
 const Dashboard = () => {
     const [books, setBooks] = useState({ backlog: [], reading: [], completed: [] });
@@ -180,7 +181,8 @@ const Dashboard = () => {
         const handleMouseMove = (e, index) => {
             const rect = e.target.getBoundingClientRect();
             const offsetX = e.clientX - rect.left;
-            const newRating = Math.min(index + offsetX / rect.width, 5);
+            const fractionalPart = offsetX / rect.width;
+            const newRating = Math.min(index + fractionalPart, 5);
             setHoverRating(parseFloat((Math.round(newRating * 4) / 4).toFixed(2)));
         };
 
@@ -196,26 +198,41 @@ const Dashboard = () => {
             <div className="star-rating" onMouseLeave={handleMouseLeave}>
                 {Array.from({ length: 5 }, (_, index) => {
                     const filledStars = hoverRating !== null ? hoverRating : rating;
-
+                    const fullFill = Math.min(1, Math.max(0, filledStars - index));
+                    console.log(`Star ${index + 1}: Full Fill = ${fullFill}`);
                     return (
                         <div
                             key={index}
                             className="star-container"
                             onMouseMove={(e) => handleMouseMove(e, index)}
-                            onClick={() => handleClick(index + 1)}
-                            style={{ cursor: "pointer"}}
+                            onClick={() => handleClick(index + fullFill)}
+                            style={{ cursor: "pointer", width: "30px", height: "30px", position: "relative" }}
                         >
                             <FaStar
                                 size={30}
-                                color={filledStars >= index + 1 ? "#FFD700" : "#DDD"}
-                                style={{ margin: "0 2px"}}
+                                color="#DDD"
+                                style={{ position: "absolute"}}
+                            />
+                            <FaStar
+                                size={30}
+                                color="#FFD700"
+                                style = {{
+                                    position: "absolute",
+                                    clipPath: `polygon(0 0, ${fullFill * 100}% 0, ${fullFill * 100}% 100%, 0% 100%)`,
+                                }}
                             />
                         </div>
-                    )
+                    );
                 })}
             </div>
-        )
-    }
+        );
+    };
+
+    StarRating.propTypes = {
+        rating: PropTypes.number.isRequired,
+        setRating: PropTypes.func.isRequired,
+    };
+
     return (
         <div className="dashboard">
             <div className="columns-container">
