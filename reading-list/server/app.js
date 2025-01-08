@@ -32,7 +32,7 @@ const authenticateToken = (req, res, next) => {
 //app.use("/api/dashboard", authenticateToken);
 
 app.use((req, res, next) => {
-    console.log(`Request Headers:`, req.headers);
+    //console.log(`Request Headers:`, req.headers);
     next();
 });
 
@@ -55,7 +55,6 @@ app.use(express.json()); //Parse JSON request bodies
 
 app.get("/api/dashboard", authenticateToken, async (req, res) => {
     try {
-      console.log("Authenticated user:", req.user); // Log the decoded JWT user data  
       // Fetch all books for the authenticated user
       const books = await pool.query("SELECT * FROM books WHERE user_id = $1", [req.user.id]);
   
@@ -76,7 +75,6 @@ app.post("/api/register", async (req, res) => {
             "INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *",
             [username, email, hashedPassword]
         );
-
         res.status(201).json({ user: newUser.rows[0] });
     } catch (error) {
         console.error(error.message);
@@ -91,17 +89,15 @@ app.post("/api/login", async (req, res) => {
     try {
         //check user exist
         const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-        console.log("Query result:", user.rows);
         if (!user || user.rows.length === 0){
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        console.log("Database password: ", user.rows[0].password);
         const validPassword = await bcrypt.compare(password, user.rows[0].password);
         if (!validPassword){
             return res.status(401).json({ error: "Invalid Credentials" });
         }
-
+        console.log("Token: ", validPassword);
         //Generate a jwt for session
         const token = jwt.sign(
             { id: user.rows[0].id, username: user.rows[0].username },
@@ -125,7 +121,7 @@ app.post("/api/dashboard", authenticateToken, async (req, res) => {
             "INSERT INTO books (title, author, genre, status, thumbnail, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
             [title, author, genre, status, thumbnail, req.user.id]
         );
-        console.log("Book added to DB:", newBook.rows[0]); //Log incoming book data
+
         res.status(201).json(newBook.rows[0]);
     } catch (err) {
         console.error("Error in POST /api/dashboard:", err.message);
@@ -171,7 +167,56 @@ app.patch("/api/dashboard/:id", authenticateToken, async (req, res) => {
         console.error("Error in PATCH /api/dashboard/:id:", err.message);
         res.status(500).send("Server error");
     }
-})
+});
+
+//Route to update reading progress for book
+app.patch("/api/dashboard/:id/progress", authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { progress } = req.body;
+
+    try {
+        const updatedBook = await pool.query(
+            "UPDATE books SET progress = $1 WHERE id = $2 AND user_id = $3 RETURNING *",
+            [progress, id, req.user.id]
+        );
+
+        if (updatedBook.rows.length === 0){
+            return res.status(404).json({ message: "Book not found or unauthorized"});
+        }
+
+        res.json(updatedBook.rows[0]);
+    } catch (err) {
+        console.error("Error updating progress: ", err.message);
+        res.status(500).send("Server error");
+    }
+});
+
+//Route to update review for book
+app.patch("/api/dashboard/:id/review", authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { notes, rating } = req.body;
+
+    //validate rating
+    if (rating % 0.25 !== 0 || rating < 0 || rating > 5) {
+        return res.status(400).json({ message: "Invalid rating. Must be 0-5 in increments of .25"});
+    }
+
+    try {
+        const updatedBook = await pool.query(
+            "UPDATE books SET notes = $1, rating = $2 WHERE id = $3 AND user_id = $4 RETURNING *",
+            [notes, rating, id, req.user.id]
+        );
+
+        if (updatedBook.rows.length === 0){
+            return res.status(404).json({message: "Book not found or unauthorized"});
+        }
+
+        res.json(updatedBook.rows[0]);
+    } catch (err) {
+        console.error("Error updating review: ", err.message);
+        res.status(500).send("Server error");
+    }
+});
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
