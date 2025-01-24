@@ -34,7 +34,7 @@ const AddBook = () => {
                 title: book.volumeInfo.title,
                 author: book.volumeInfo.authors?.join(", "),
                 genre: book.volumeInfo.categories?.[0] || "Unknown",
-                status: "reading",
+                status: "backlog",
                 thumbnail: book.volumeInfo.imageLinks?.thumbnail || "",
             };
     
@@ -53,15 +53,6 @@ const AddBook = () => {
         }
     };
 
-    /*
-    {
-                title: book.volumeInfo.title,
-                author: book.volumeInfo.authors?.join(", "),
-                genre: book.volumeInfo.categories?.[0] || "Unknown",
-                status: "reading",
-                thumbnail: book.volumeInfo.imageLinks?.thumbnail || "",
-            }
-    */
     return (
         <div>
             <h1>Add a Book</h1>

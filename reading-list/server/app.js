@@ -147,16 +147,28 @@ app.delete("/api/dashboard/:id", authenticateToken, async (req, res) => {
     }
 });
 
-//Route to update books
+//Route to update book fields, building db query dynamically based on given fields
 app.patch("/api/dashboard/:id", authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, progress } = req.body;
 
     try {
-        const updatedBook = await pool.query(
-            "UPDATE books SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3 RETURNING *",
-            [status, id, req.user.id]
-        );
+        const fields = [];
+        const values = [];
+        let query = 'UPDATE books SET ';
+
+        if (status !== undefined){
+            fields.push('status = $' + (fields.length + 1));
+            values.push(status);
+        }
+        if (progress !== undefined){
+            fields.push('progress = $' + (fields.length + 1));
+            values.push(progress);
+        }
+
+        query += fields.join(', ') + ' WHERE id = $' + (fields.length + 1) + ' RETURNING *';
+        values.push(id);
+        const updatedBook = await pool.query(query, values);
 
         if (updatedBook.rowCount === 0) {
             return res.status(400).json({ error: "Book not found" });
@@ -169,27 +181,6 @@ app.patch("/api/dashboard/:id", authenticateToken, async (req, res) => {
     }
 });
 
-//Route to update reading progress for book
-app.patch("/api/dashboard/:id/progress", authenticateToken, async (req, res) => {
-    const { id } = req.params;
-    const { progress } = req.body;
-
-    try {
-        const updatedBook = await pool.query(
-            "UPDATE books SET progress = $1 WHERE id = $2 AND user_id = $3 RETURNING *",
-            [progress, id, req.user.id]
-        );
-
-        if (updatedBook.rows.length === 0){
-            return res.status(404).json({ message: "Book not found or unauthorized"});
-        }
-
-        res.json(updatedBook.rows[0]);
-    } catch (err) {
-        console.error("Error updating progress: ", err.message);
-        res.status(500).send("Server error");
-    }
-});
 
 //Route to update review for book
 app.patch("/api/dashboard/:id/review", authenticateToken, async (req, res) => {

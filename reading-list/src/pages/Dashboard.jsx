@@ -7,7 +7,11 @@ const Dashboard = () => {
     const [books, setBooks] = useState({ backlog: [], reading: [], completed: [] });
     const [isReviewModalOpen, setIsReviewModalOpen] = useState({});
     const [currentReview, setCurrentReview] = useState({ notes: "", rating: 0});
+    const [searchQuery, setSearchQuery] = useState("");
+    const [genreFilter, setGenreFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
 
+    //Debugging log
     useEffect(() => {
         console.log("Updated books state:", books);
     }, [books]);
@@ -52,15 +56,27 @@ const Dashboard = () => {
                 return;
               }
 
+            const bookToUpdate = Object.values(books).flat().find((book) => book.id === bookId);
+
+            if(!bookToUpdate){
+                console.error("Book not found");
+                return;
+            }
+
+            const payload = {
+                status: newStatus,
+                progress: 0,
+            };
+
             const response = await axios.patch(`http://localhost:5000/api/dashboard/${bookId}`,  
-                {status: newStatus },
+                payload,
                 {
                     headers: { Authorization: `Bearer ${token}`},
                 }
             );
             const updatedBook = response.data;
             setBooks((prevBooks) => groupedBooks([...prevBooks.backlog, ...prevBooks.reading, ...prevBooks.completed].map((book) =>
-                book.id === updatedBook.id ? updatedBook : book
+                book.id === updatedBook.id ? { ...book, ...updatedBook} : book
             )));
         } catch (error) {
             console.error("Error updating book status:", error);
@@ -89,6 +105,19 @@ const Dashboard = () => {
         } 
     };
 
+    const filterBooks = (books) => {
+        const searchLower = searchQuery.toLowerCase();
+        return books
+            .filter(
+                (book) =>
+                (searchQuery === "" ||
+                    book.title.toLowerCase().includes(searchLower) ||
+                    book.author.toLowerCase().includes(searchLower)) &&
+                    (genreFilter === "" || book.genre === genreFilter) &&
+                    (statusFilter === "" || book.status === statusFilter)
+            );
+    };
+
     const groupedBooks = (allBooks) => {
         return allBooks.reduce(
           (acc, book) => {
@@ -108,7 +137,7 @@ const Dashboard = () => {
             }
 
             const response = await axios.patch(
-                `http://localhost:5000/api/dashboard/${bookId}/progress`,
+                `http://localhost:5000/api/dashboard/${bookId}`,
                 { progress: newProgress },
                 { headers: { Authorization: `Bearer ${token}`} }
             );
@@ -266,89 +295,112 @@ const Dashboard = () => {
         setRating: PropTypes.func.isRequired,
     };
 
+
+
     return (
         <div className="dashboard">
-            <div className="columns-container">
-                <div className="column">
-                    <h2>To Be Read ({books.backlog?.length || 0})</h2>
-                    {books.backlog?.map((book) => (
-                    <div key={book.id} className="book-card">
-                        {book.thumbnail && <img src={book.thumbnail} alt={`${book.title} cover`}/> } 
-                        <p>{book.title}</p>
-                        <div className="button-group">
-                            <button className="book-button" onClick={() => {
-                                updateBookStatus(book.id, "reading");
-                                handleProgressChange(book.id, 0);
-                                }
-                            }>Start Reading</button>
-                            <button className="book-button" onClick={() => removeBook(book.id)}>Remove</button>
-                        </div>
-                    </div>
-                    ))}
-                </div>
-                <div className="column">
-                    <h2>Reading ({books.reading?.length || 0})</h2>
-                    {books.reading?.map((book) => (
-                    <div key={book.id} className="book-card">
-                        {book.thumbnail && <img src={book.thumbnail} alt={`${book.title} cover`}/> } 
-                        <p>{book.title}</p>
-                        <p>Progress: {book.progress || 0}% </p>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={book.progress || 0}
-                            onChange={(e) => handleProgressChange(book.id, e.target.value)}
-                        />
-                        <div className="button-group">
-                            <button className="book-button" onClick={() => updateBookStatus(book.id, "completed")}>Mark as Completed</button>
-                            <button className="book-button" onClick={() => removeBook(book.id)}>Remove</button>
-                        </div>
-                    </div>
-                    ))}
-                </div>
-                <div className="column">
-                    <h2>Completed ({books.completed?.length || 0})</h2>
-                    {books.completed?.map((book) => (
-                    <div key={book.id} className="book-card">
-                        {book.thumbnail && <img src={book.thumbnail} alt={`${book.title} cover`}/> } 
-                        <p>{book.title}</p>
-                        <p>{book.author}</p>
-                        <StarDisplay rating={book.rating || 0} />
-                        <p>Notes: {book.notes || "Add notes"}</p>
-                        <button className="book-button" onClick={() => toggleReviewModal(book.id)}>Add/Edit Review</button>
-
-                        {isReviewModalOpen[book.id] && (
-                            <div className="review-modal">
-                                <textarea
-                                    placeholder="Write your review here..."
-                                    value={currentReview.notes}
-                                    onChange={(e) => setCurrentReview({...currentReview, notes: e.target.value})}
-                                />
-                                <label>
-                                    Rating:
-                                    <StarRating
-                                        rating={currentReview.rating}
-                                        setRating={(newRating) =>
-                                            setCurrentReview({ ...currentReview, rating: newRating })
-                                        }
-                                    />
-                                </label>
-                                <button className="book-button" onClick={() => submitReview(book.id)}>Submit</button>
-                                <button className="book-button" onClick={() => toggleReviewModal(book.id)}>Cancel</button>
-                            </div>
-                        )}
-                        <div className="button-group">
-                            <button className="book-button" onClick={() => updateBookStatus(book.id, "backlog")}>Move to Backlog</button>
-                            <button className="book-button" onClick={() => removeBook(book.id)}>Remove</button>
-                        </div>
-                    </div>
-                    ))}
-                </div>
+            <div className="filters">
+                <input
+                    type="text"
+                    placeholder="Search by title or author..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <select
+                    value={genreFilter}
+                    onChange={(e) => setGenreFilter(e.target.value)}
+                >
+                    <option value="">All Genres</option>
+                    <option value="Fiction">Fiction</option>
+                    <option value="Non-fiction">Non-fiction</option>
+                    <option value="Mystery">Mystery</option>
+                </select>
+                <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                    <option value="">All Statuses</option>
+                    <option value="backlog">To Be Read</option>
+                    <option value="reading">Reading</option>
+                    <option value="completed">Completed</option>
+                </select>
             </div>
-            
+            <div className="columns-container">
+                {["backlog", "reading", "completed"].map((status) => (
+                    <div key={status} className="column">
+                        <h2>
+                            {status === "backlog"
+                                ? "To Be Read"
+                                : status.charAt(0).toUpperCase() + status.slice(1)
+                            }
+                        </h2>
+                        {filterBooks(books[status] || []).map((book) => (
+                            <div key={book.id} className="book-card">
+                                {book.thumbnail && (
+                                    <img
+                                        src={book.thumbnail}
+                                        alt={`${book.title} cover`}
+                                        className="book-cover"
+                                    />
+                                )}
+                                <p>{book.title}</p>
+                                <p>{book.author}</p>
+                                {status === "reading" && (
+                                    <div className="progress-bar-container">
+                                        <label htmlFor={`progress-${book.id}`}>Progress:</label>
+                                        <input
+                                            type="range"
+                                            id={`progress-${book.id}`}
+                                            min="0"
+                                            max="100"
+                                            step="1"
+                                            value={book.progress || 0}
+                                            onChange={(e) => handleProgressChange(book.id, e.target.value)}
+                                        />
+                                        <span>{book.progress || 0}%</span>
+                                    </div>
+                                )}
+
+                                {status === "completed" && (
+                                    <div className="star-rating-container">
+                                        <StarDisplay rating={book.rating  || 0} />
+                                    </div>
+                                )}
+
+                                <div className="button-group">
+                                    
+                                    <button
+                                        className="book-button"
+                                        onClick={() => removeBook(book.id)}
+                                    >
+                                        Remove
+                                    </button>
+                                    {status === "completed" && (
+                                        <button
+                                        className="book-button"
+                                        onClick={() => submitReview(book.id)}
+                                        >
+                                            Edit Review
+                                        </button>
+                                    )}
+                                    <select
+                                        value={book.status}
+                                        onChange={(e) => updateBookStatus(book.id, e.target.value)}
+                                    >
+                                        <option value="reading">Reading</option>
+                                        <option value="backlog">To Be Read</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ))}
+                </div>
+             ))}
+            </div>
         </div>
     );
 };
 
+/**
+ *                   */
 export default Dashboard;

@@ -7,7 +7,6 @@
   overflow: hidden;
 }
 
-
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
@@ -23,7 +22,11 @@
 }
 
 .book-card {
-  padding: 1.25em;
+  padding: 10px;
+  margin: 5px 0;
+  background-color: #ffffff02;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 
 .book-card .button-group {
@@ -43,6 +46,16 @@
 
 .book-card .book-button:hover {
   background-color: #0056b3;
+}
+
+.book-cover {
+  max-width: 100px;
+  max-height: 150px;
+  margin-bottom: 1rem;
+}
+
+.book-card select {
+  margin-bottom: 0.5rem;
 }
 
 input[type="range"] {
@@ -102,13 +115,31 @@ input[type="number"] {
 }
 
 .dashboard {
-  height: 100vh;
-  width: 100vw;
+  height: 90vh;
+  width: 97vw;
   display: flex;
   flex-direction: column;
   padding: 1 rem;
   box-sizing: border-box;
   background-color: #f5f5f51c;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filters input {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.filters select {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 
 .columns-container {
@@ -150,28 +181,6 @@ input[type="number"] {
   margin-bottom: 1rem;
 }
 
-.book-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1rem;
-  background-color: #020202;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.book-cover {
-  max-width: 100px;
-  max-height: 150px;
-  margin-bottom: 1rem;
-}
-
-.book-card select {
-  margin-bottom: 0.5rem;
-}
-
 @media (max-width: 768px) {
   .columns-container {
     grid-template-columns: 1fr; /* Stack columns vertically on small screens */
@@ -179,7 +188,7 @@ input[type="number"] {
 }
 
 nav {
-  width: 100%; /* Span the full container width */
+  width: 97vw; /* Span the full container width */
   background-color: #333; /* Example styling */
   color: white;
   padding: 10px 20px; /* Optional padding */
