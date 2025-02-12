@@ -5,7 +5,10 @@ import PropTypes from "prop-types";
 
 const Dashboard = () => {
     const [books, setBooks] = useState({ backlog: [], reading: [], completed: [] });
-    const [isReviewModalOpen, setIsReviewModalOpen] = useState({});
+    const [modalState, setModalState] = useState({
+        isOpen: false,
+        bookId: null,
+    });
     const [currentReview, setCurrentReview] = useState({ notes: "", rating: 0});
     const [searchQuery, setSearchQuery] = useState("");
     const [genreFilter, setGenreFilter] = useState("");
@@ -156,26 +159,13 @@ const Dashboard = () => {
     };
 
     const toggleReviewModal = (bookId) => {
-        const book = books.completed.find((book) => book.id === bookId);
-
-        if (!isReviewModalOpen[bookId]){
-            //Open modal with current raiting and notes
-            setCurrentReview({
-                notes: book?.notes || "",
-                rating: book?.rating || 0,
-            });
-        } else {
-            //Close modal
-            setCurrentReview({ notes: "", rating: 0});
-        }
-
-        setIsReviewModalOpen((prev) => ({
-            ...prev,
-            [bookId]: !prev[bookId],
+        setModalState((prevState) => ({
+            isOpen: !prevState.isOpen,
+            bookId,
         }));
     };
 
-    const submitReview = async (bookId) => {
+    const submitReview = async (bookId, review) => {
         try {
             const token = localStorage.getItem("token");
             if (!token) {
@@ -184,8 +174,8 @@ const Dashboard = () => {
             }
 
             const response = await axios.patch(
-                `http://localhost:5000/api/dashboard/${bookId}/review`,
-                currentReview,
+                `http://localhost:5000/api/dashboard/${bookId}`,
+                { notes: review.notes, rating: review.rating },
                 { headers: { Authorization: `Bearer ${token}`}}
             );
 
@@ -198,7 +188,6 @@ const Dashboard = () => {
                 ),
             }));
 
-            toggleReviewModal(bookId);
         } catch (err) {
             console.error("Error submitting review: ", err);
         }
@@ -363,7 +352,14 @@ const Dashboard = () => {
 
                                 {status === "completed" && (
                                     <div className="star-rating-container">
-                                        <StarDisplay rating={book.rating  || 0} />
+                                        <StarDisplay rating={book.rating || 0} />
+                                        <div>
+                                            {book.notes ? (
+                                                <p>{book.notes}</p>
+                                            ) : (
+                                                <p style={{ fontStyle: "italic"}}>Add a Review</p>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
@@ -378,7 +374,7 @@ const Dashboard = () => {
                                     {status === "completed" && (
                                         <button
                                         className="book-button"
-                                        onClick={() => submitReview(book.id)}
+                                        onClick={() => toggleReviewModal(book.id) }
                                         >
                                             Edit Review
                                         </button>
@@ -392,8 +388,51 @@ const Dashboard = () => {
                                         <option value="completed">Completed</option>
                                     </select>
                                 </div>
+                                {status === "completed" && modalState.bookId === book.id && modalState.isOpen && (
+                                        <div className="modal">
+                                            <div className="modal-content">
+                                                <h2>Edit Review</h2>
+                                                <div className="star-rating-container">
+                                                    <StarRating 
+                                                    rating={currentReview.rating || 0} 
+                                                    setRating={(newRating) => {
+                                                        setBooks((prevBooks) =>
+                                                            groupedBooks(
+                                                                [...prevBooks.backlog, ...prevBooks.reading, ...prevBooks.completed].map((b) =>
+                                                                    b.id === modalState.bookId ? { ...b, rating: newRating } : b
+                                                                )
+                                                            )
+                                                        );
+                                                        setCurrentReview((prevReview) => ({
+                                                            ...prevReview,
+                                                            rating: newRating,
+                                                        }));
+                                                    }}
+                                                    />
+                                                </div>
+                                                <textarea 
+                                                    placeholder="Write your review here..."
+                                                    value={currentReview.notes}
+                                                    onChange = {(e) => setCurrentReview((prevReview) => ({
+                                                        ...prevReview,
+                                                        notes: e.target.value,
+                                                        
+                                                    }))}
+                                                    
+                                                ></textarea>
+                                                <div className="button-group">
+                                                    <button onClick={() => {
+                                                        submitReview(book.id, currentReview);
+                                                        toggleReviewModal(book.id)
+                                                        
+                                                        }}>Submit</button>
+                                                    <button onClick={() => toggleReviewModal(book.id)}>Close</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                             </div>
-                        ))}
+                        ))}   
                 </div>
              ))}
             </div>

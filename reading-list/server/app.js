@@ -32,7 +32,7 @@ const authenticateToken = (req, res, next) => {
 //app.use("/api/dashboard", authenticateToken);
 
 app.use((req, res, next) => {
-    //console.log(`Request Headers:`, req.headers);
+    console.log(`Request Headers:`, req.headers);
     next();
 });
 
@@ -150,7 +150,7 @@ app.delete("/api/dashboard/:id", authenticateToken, async (req, res) => {
 //Route to update book fields, building db query dynamically based on given fields
 app.patch("/api/dashboard/:id", authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { status, progress } = req.body;
+    const { status, progress, notes, rating } = req.body;
 
     try {
         const fields = [];
@@ -166,7 +166,24 @@ app.patch("/api/dashboard/:id", authenticateToken, async (req, res) => {
             values.push(progress);
         }
 
-        query += fields.join(', ') + ' WHERE id = $' + (fields.length + 1) + ' RETURNING *';
+        if (rating !== undefined ){
+            if (rating % 0.25 !== 0 || rating < 0 || rating > 5) {
+                return res.status(400).json({ error: "Invalid rating"});
+            }
+            fields.push('rating = $' + (fields.length + 1));
+            values.push(rating);
+        }
+
+        if (notes !== undefined){
+            fields.push('notes = $' + (fields.length + 1));
+            values.push(notes);
+        }
+        
+        if (fields.length === 0) {
+            return res.status(400).json({ error: "No valid fields to update."});
+        }
+
+        query += fields.join(', ') + 'WHERE id = $' + (fields.length + 1) + ' RETURNING *';
         values.push(id);
         const updatedBook = await pool.query(query, values);
 
